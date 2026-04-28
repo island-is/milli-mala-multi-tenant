@@ -18,7 +18,7 @@ env:
   ECR_REPOSITORY: milli-mala-multi-tenant
   AWS_REGION: eu-west-1
   ECS_CLUSTER: tooling-prod
-  ECS_SERVICE: tooling-milli-mala-multi-tenant
+  ECS_SERVICE: prod-milli-mala-multi-tenant
 
 jobs:
   build-and-deploy:
