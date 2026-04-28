@@ -70,13 +70,13 @@ jobs:
             --query 'taskDefinition' \
             --output json)
 
-          NEW_TASK_DEF=$(echo $TASK_DEF | jq --arg TAG "${{ steps.meta.outputs.tag }}" '
+          echo "$TASK_DEF" | jq --arg TAG "${{ steps.meta.outputs.tag }}" '
             .containerDefinitions[0].image = (.containerDefinitions[0].image | split(":")[0] + ":" + $TAG) |
-            del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .placementConstraints, .compatibilities, .registeredAt, .registeredBy)
-          ')
+            del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .placementConstraints, .compatibilities, .registeredAt, .registeredBy, .enableFaultInjection)
+          ' > /tmp/new-task-def.json
 
-          NEW_ARN=$(echo $NEW_TASK_DEF | aws ecs register-task-definition \
-            --cli-input-json file:///dev/stdin \
+          NEW_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file:///tmp/new-task-def.json \
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
 
