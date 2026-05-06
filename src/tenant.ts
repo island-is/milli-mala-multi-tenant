@@ -2,7 +2,7 @@
  * Tenant resolution — looks up TenantConfig by brand_id from a backing store.
  *
  * Cloudflare Workers → KV store
- * Docker / K8s      → tenants.json file
+ * Docker / K8s      → config in code (src/tenants.config.ts) + env vars
  */
 
 import type { TenantConfig, EndpointConfig } from './types.js'
@@ -94,7 +94,7 @@ export async function resolveTenantConfig(
     return null
   }
 
-  // Validate config before returning — catches malformed KV entries or tenants.json
+  // Validate config before returning — catches malformed KV entries or config drift
   try {
     validateTenantConfig(config)
   } catch (err) {

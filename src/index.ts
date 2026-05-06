@@ -10,12 +10,12 @@
  */
 
 import { timingSafeEqual, createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { getConfig } from './config.js'
 import { handleWebhook } from './webhook.js'
 import { handleAttachments } from './attachments.js'
 import { FileTenantStore, resolveTenantConfig, sanitizeAuditParam } from './tenant.js'
+import { loadTenants } from './tenants.config.js'
 import { FileAuditStore } from './fileAuditStore.js'
 import { createLogger } from './logger.js'
 import type { TenantConfig, Logger } from './types.js'
@@ -28,17 +28,16 @@ const logger: Logger = createLogger('main')
 const MAX_BODY_SIZE = 1024 * 1024 // 1MB
 
 /**
- * Load tenant store from tenants.json file.
+ * Build the tenant store from `src/tenants.config.ts`. Secrets are read
+ * from environment variables; missing variables cause `loadTenants` to
+ * throw, which intentionally crashes startup (fail fast).
  */
 function loadTenantStore(): FileTenantStore {
-  const tenantsPath = process.env.TENANTS_FILE || './tenants.json'
   try {
-    const json = readFileSync(tenantsPath, 'utf-8')
-    return FileTenantStore.fromJson(json)
+    return new FileTenantStore(loadTenants())
   } catch (err) {
-    logger.error('Failed to load tenants file', { path: tenantsPath, error: (err as Error).message })
-    // Return empty store — all tenant lookups will return null
-    return new FileTenantStore([])
+    logger.error('Failed to load tenant config', { error: (err as Error).message })
+    throw err
   }
 }
 
