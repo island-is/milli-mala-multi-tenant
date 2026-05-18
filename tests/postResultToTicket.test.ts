@@ -99,6 +99,17 @@ describe('buildNote', () => {
     expect(tsLine).toBe('Tímastimpill: 17.05.2026 10:00:00')
   })
 
+  it('includes Vísun line when auditRef is set (documented and failure)', () => {
+    const ok = buildNote(baseOutcome({ auditRef: 'AUD-123' }), fullEp)
+    expect(ok).toContain('Vísun: AUD-123')
+    const fail = buildNote(
+      baseOutcome({ ok: false, outcome: 'create_failed', sanitizedReason: 'X', auditRef: 'AUD-456' }),
+      fullEp
+    )
+    expect(fail).toContain('❌ Skjalfesting mistókst')
+    expect(fail).toContain('Vísun: AUD-456')
+  })
+
   it('lists failed attachments', () => {
     const n = buildNote(baseOutcome({ failedAttachments: [{ filename: 'big.png', reason: 'total size limit reached' }] }), fullEp)
     expect(n).toContain('Viðhengi sem mistókst að senda:')
