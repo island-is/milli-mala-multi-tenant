@@ -167,5 +167,28 @@ export function loadTenants(env: Record<string, string | undefined> = process.en
         includeInternalNotes: false,
       },
     },
+    {
+      brand_id: '25782179205266',
+      name: 'HMS',
+      zendesk: {
+        subdomain: requireEnv('HMS_ZENDESK_SUBDOMAIN', env),
+        email: requireEnv('HMS_ZENDESK_EMAIL', env),
+        apiToken: requireEnv('HMS_ZENDESK_API_TOKEN', env),
+        webhookSecret: requireEnv('HMS_ZENDESK_WEBHOOK_SECRET', env),
+      },
+      endpoints: {
+        onesystems: {
+          type: 'onesystems',
+          baseUrl: requireEnv('HMS_ONESYSTEMS_BASE_URL', env),
+          appKey: requireEnv('HMS_ONESYSTEMS_APP_KEY', env),
+        },
+      },
+      malaskra: { apiKey: requireEnv('HMS_MALASKRA_API_KEY', env) },
+      pdf: {
+        companyName: 'HMS',
+        locale: 'is-IS',
+        includeInternalNotes: false,
+      },
+    },
   ]
 }

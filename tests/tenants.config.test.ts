@@ -60,17 +60,25 @@ const validEnv: Record<string, string> = {
   TRYGGINGASTOFNUN_INTERNAL_ONESYSTEMS_BASE_URL: 'https://onesystems.test.example/',
   TRYGGINGASTOFNUN_INTERNAL_ONESYSTEMS_APP_KEY: testSecret('tryggint-os-appkey', 40),
   TRYGGINGASTOFNUN_INTERNAL_MALASKRA_API_KEY: testSecret('tryggint-malaskra-key', 40),
+  HMS_ZENDESK_SUBDOMAIN: 'hms-test',
+  HMS_ZENDESK_EMAIL: 'admin@hms.test',
+  HMS_ZENDESK_API_TOKEN: testSecret('hms-zd-token', 40),
+  HMS_ZENDESK_WEBHOOK_SECRET: testSecret('hms-zd-webhook', 40),
+  HMS_ONESYSTEMS_BASE_URL: 'https://onesystems.test.example/',
+  HMS_ONESYSTEMS_APP_KEY: testSecret('hms-os-appkey', 40),
+  HMS_MALASKRA_API_KEY: testSecret('hms-malaskra-key', 40),
 }
 
 describe('loadTenants', () => {
   it('returns all tenants when all env vars are set', () => {
     const tenants = loadTenants(validEnv)
-    expect(tenants).toHaveLength(5)
+    expect(tenants).toHaveLength(6)
     expect(tenants[0].name).toBe('Kerfisstjórn')
     expect(tenants[1].name).toBe('Vinnueftirlitið')
     expect(tenants[2].name).toBe('Samgöngustofa')
     expect(tenants[3].name).toBe('Tryggingastofnun')
     expect(tenants[4].name).toBe('Tryggingastofnun-internal')
+    expect(tenants[5].name).toBe('HMS')
   })
 
   it('produces tenants that pass validateTenantConfig', () => {
@@ -87,6 +95,7 @@ describe('loadTenants', () => {
     expect(tenants[2].pdf.companyName).toBe('Samgöngustofa')
     expect(tenants[3].pdf.companyName).toBe('Tryggingastofnun')
     expect(tenants[4].pdf.companyName).toBe('Tryggingastofnun')
+    expect(tenants[5].pdf.companyName).toBe('HMS')
   })
 
   it('uses per-tenant Zendesk credentials (no shared secrets across tenants)', () => {
@@ -131,6 +140,20 @@ describe('loadTenants', () => {
     expect(tryggingastofnun.brand_id).toBe('11204917066386')
     expect(tryggingastofnunInternal.endpoints.onesystems?.type).toBe('onesystems')
     expect(tryggingastofnunInternal.brand_id).toBe('36102499292434')
+  })
+
+  it('configures HMS with a OneSystems endpoint and the expected brand_id', () => {
+    const tenants = loadTenants(validEnv)
+    const hms = tenants.find(t => t.name === 'HMS')!
+    expect(hms.endpoints.onesystems?.type).toBe('onesystems')
+    expect(hms.brand_id).toBe('25782179205266')
+    expect(hms.pdf.includeInternalNotes).toBe(false)
+  })
+
+  it('throws with a clear error when HMS_ZENDESK_API_TOKEN is missing', () => {
+    const env = { ...validEnv }
+    delete env.HMS_ZENDESK_API_TOKEN
+    expect(() => loadTenants(env)).toThrow('HMS_ZENDESK_API_TOKEN')
   })
 
   it('throws with a clear error when KERFISSTJORN_ZENDESK_API_TOKEN is missing', () => {
