@@ -402,3 +402,68 @@ describe('loadTenants — Þjóðskrá (ticket creation only)', () => {
     expect(() => loadTenants(env)).toThrow('THJODSKRA_ZENDESK_SUBDOMAIN')
   })
 })
+
+describe('loadTenants — TR services (Tryggingastofnun main brand)', () => {
+  const trEnv = {
+    TRYGGINGASTOFNUN_TR_API_KEY: testSecret('trygg-tr-api-key', 40),
+    TRYGGINGASTOFNUN_TR_HULD_BASE_URL: 'https://huldtest.tr.is/zendesktest/api/protected/v1',
+    TRYGGINGASTOFNUN_TR_AUTH0_DOMAIN: 'tr-test.eu.auth0.com',
+    TRYGGINGASTOFNUN_TR_AUTH0_AUDIENCE: 'https://zendesk.dev.tr.is',
+    TRYGGINGASTOFNUN_TR_AUTH0_CLIENT_ID: 'tr-m2m-client',
+    TRYGGINGASTOFNUN_TR_AUTH0_CLIENT_SECRET: testSecret('trygg-tr-auth0-secret', 40),
+    TRYGGINGASTOFNUN_TR_AGENT_AUTH_DOMAIN: 'tr-test.eu.auth0.com',
+    TRYGGINGASTOFNUN_TR_AGENT_AUTH_AUDIENCE: 'https://milli-mala.tr-services',
+    TRYGGINGASTOFNUN_TR_AGENT_AUTH_CLIENT_ID: 'tr-smari-spa-client',
+    TRYGGINGASTOFNUN_TR_AGENT_AUTH_EMAIL_CLAIM: 'https://tr.is/email',
+    TRYGGINGASTOFNUN_TR_AGENT_AUTH_EMAIL_VERIFIED_CLAIM: 'https://tr.is/email_verified',
+    TRYGGINGASTOFNUN_TR_EAUTH_ZENDESK_OAUTH_CLIENT_ID: 'tr-eauth-zd-client',
+    TRYGGINGASTOFNUN_TR_EAUTH_ZENDESK_OAUTH_CLIENT_SECRET: testSecret('trygg-tr-eauth-zd-secret', 40),
+  }
+  const byBrand = (env: Record<string, string | undefined>, brand: string) =>
+    loadTenants(env).find(t => t.brand_id === brand)!
+
+  it('has no tr section unless a TR service is switched on', () => {
+    expect(byBrand({ ...validEnv, ...trEnv }, '11204917066386').services.tr).toBeUndefined()
+  })
+
+  it('builds Smári only, with e-auth off', () => {
+    const tr = byBrand({ ...validEnv, ...trEnv, TRYGGINGASTOFNUN_TR_SMARI_ENABLED: 'true' }, '11204917066386').services.tr!
+    expect(tr.smari).toEqual({ enabled: true })
+    expect(tr.eauth).toBeUndefined()
+    expect(tr.agentAuth).toEqual({
+      domain: 'tr-test.eu.auth0.com',
+      audience: 'https://milli-mala.tr-services',
+      clientId: 'tr-smari-spa-client',
+      emailClaim: 'https://tr.is/email',
+      emailVerifiedClaim: 'https://tr.is/email_verified',
+    })
+  })
+
+  it('builds e-auth with defaults and per-tenant overrides', () => {
+    const tr = byBrand({
+      ...validEnv, ...trEnv,
+      TRYGGINGASTOFNUN_TR_EAUTH_ENABLED: 'true',
+      TRYGGINGASTOFNUN_TR_EAUTH_HASH_VALUE_MODE: 'sha256',
+      TRYGGINGASTOFNUN_TR_EAUTH_RATE_PER_TARGET_MAX: '5',
+    }, '11204917066386').services.tr!
+    expect(tr.smari).toBeUndefined()
+    expect(tr.eauth).toEqual({
+      hashValueMode: 'sha256',
+      timeoutSeconds: 120,
+      attemptTtlSeconds: 180,
+      rateLimits: { perAgent: { max: 10, windowSeconds: 600 }, perTarget: { max: 5, windowSeconds: 600 } },
+      zendeskOAuth: { clientId: 'tr-eauth-zd-client', clientSecret: trEnv.TRYGGINGASTOFNUN_TR_EAUTH_ZENDESK_OAUTH_CLIENT_SECRET },
+    })
+  })
+
+  it('throws naming a missing shared variable once a service is on', () => {
+    const env: Record<string, string | undefined> = { ...validEnv, ...trEnv, TRYGGINGASTOFNUN_TR_SMARI_ENABLED: 'true' }
+    delete env.TRYGGINGASTOFNUN_TR_AGENT_AUTH_AUDIENCE
+    expect(() => loadTenants(env)).toThrow('TRYGGINGASTOFNUN_TR_AGENT_AUTH_AUDIENCE')
+  })
+
+  it('never gives the internal TR brand a tr section', () => {
+    const env = { ...validEnv, ...trEnv, TRYGGINGASTOFNUN_TR_SMARI_ENABLED: 'true', TRYGGINGASTOFNUN_TR_EAUTH_ENABLED: 'true' }
+    expect(byBrand(env, '36102499292434').services.tr).toBeUndefined()
+  })
+})
